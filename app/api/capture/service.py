@@ -22,6 +22,7 @@ class CaptureService:
         Image.fromarray(image).save(output_path)
         resp = message(True, "Image has been captured.")  
         resp["registry_key"] = key
+        
 
     @staticmethod
     def capture(key,url,stream_provider,resolution,output_path):

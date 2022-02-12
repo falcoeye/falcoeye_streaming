@@ -6,6 +6,7 @@ from flask_restx import Namespace, Resource, fields
 from app.utils import internal_err_resp
 
 from .service import CaptureService
+from flask import request
 
 api = Namespace("capture", description="Capture related operations.")
 
@@ -26,7 +27,8 @@ class Capture(Resource):
     def post(self):
         """Initiate a caputre request"""
         data = json.loads(request.data.decode("utf-8"))
-
+        print("The client IP is: {}".format(request.environ['REMOTE_ADDR']))
+        print("The client port is: {}".format(request.environ['REMOTE_PORT']))
         parsed_data = {}
         for field, ftype in Capture.required_fields:
             if field not in data:
