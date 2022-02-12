@@ -24,7 +24,7 @@ class Config:
 
 class DevelopmentConfig(Config):
     DEBUG = True
-    
+
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     # Add logger
