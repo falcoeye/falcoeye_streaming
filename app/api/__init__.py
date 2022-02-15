@@ -2,6 +2,7 @@ from flask import Blueprint
 from flask_restx import Api
 
 from .capture.controller import api as capture_ns
+from .record.controller import api as record_ns
 
 # from .stream.controller import api as stream_ns
 
@@ -19,4 +20,4 @@ api = Api(
 
 # API namespaces
 api.add_namespace(capture_ns)
-# api.add_namespace(stream_ns)
+api.add_namespace(record_ns)
