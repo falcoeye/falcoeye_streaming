@@ -7,7 +7,8 @@ from flask import current_app
 from PIL import Image
 
 from app.utils import internal_err_resp, message
-
+from config import config_by_name
+import os
 
 class CaptureService:
     @staticmethod
@@ -16,9 +17,7 @@ class CaptureService:
         url,
         stream_provider,
         resolution,
-        output_path,
-        remote_addr=None,
-        remote_port=None,
+        output_path
     ):
         image = source.capture_image(url, stream_provider)
         if image is not None:
@@ -29,11 +28,22 @@ class CaptureService:
         else:
             resp = message(False, "Couldn't capture image. No stream found")
             resp["registry_key"] = registry_key
-            resp["caputre_status"] = "FAILEDTOCAPUTRE"
+            resp["capture_status"] = "FAILEDTOCAPUTRE"
 
-        if remote_addr:
-            postback_url = f"http://{remote_addr}:8000/api/capture/status"
-            requests.post(postback_url, data=json.dumps(resp))
+        try:
+            backend_server = config_by_name[os.environ.get("FLASK_CONFIG","development")].BACKEND_SERVER_NAME
+            postback_url = f"http://{backend_server}/api/capture/status/{registry_key}"
+            rv = requests.post(postback_url, data=json.dumps(resp),headers = {
+                "Content-type": "application/json"})
+            #"X-API-KEY":access_token})
+        except requests.exceptions.ConnectionError:
+            print(f"Warning: failed to inform backend server ({backend_server}) for change in the status of: {registry_key} due to ConnectionError")
+        except requests.exceptions.Timeout:
+            print(f"Warning: failed to inform backend server ({backend_server}) for change in the status of: {registry_key} due to Timeout")
+        except requests.exceptions.HTTPError:
+            print(f"Warning: failed to inform backend server ({backend_server}) for change in the status of: {registry_key} due to HTTPError")
+
+           
 
     @staticmethod
     def capture(
@@ -41,9 +51,7 @@ class CaptureService:
         url,
         stream_provider,
         resolution,
-        output_path,
-        remote_addr=None,
-        remote_port=None,
+        output_path
     ):
         try:
             a_thread = threading.Thread(
@@ -53,9 +61,7 @@ class CaptureService:
                     url,
                     stream_provider,
                     resolution,
-                    output_path,
-                    remote_addr,
-                    remote_port,
+                    output_path
                 ],
             )
             a_thread.start()

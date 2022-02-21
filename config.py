@@ -26,6 +26,7 @@ class DevelopmentConfig(Config):
     DEBUG = True
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    BACKEND_SERVER_NAME = "127.0.0.1:8000"
 
     # Add logger
 

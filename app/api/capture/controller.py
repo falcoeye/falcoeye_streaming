@@ -30,15 +30,9 @@ class Capture(Resource):
     def post(self):
         """Initiate a caputre request"""
         data = json.loads(request.data.decode("utf-8"))
-        # for now these acquired from flask, but
-        # should be configurable in future
-        host = request.environ["REMOTE_ADDR"]
-        port = request.environ["REMOTE_PORT"]
         parsed_data = {}
         for field, ftype in Capture.required_fields:
             if field not in data:
                 return internal_err_resp()
             parsed_data[field] = ftype(data[field])
-        parsed_data["remote_addr"] = host
-        parsed_data["remote_port"] = port
         return CaptureService.capture(**parsed_data)
