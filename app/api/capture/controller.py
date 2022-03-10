@@ -12,13 +12,7 @@ api = Namespace("capture", description="Capture related operations.")
 
 @api.route("")
 class Capture(Resource):
-    required_fields = [
-        ("registry_key", str),
-        ("url", str),
-        ("stream_provider", str),
-        ("resolution", str),
-        ("output_path", str),
-    ]
+
 
     @api.doc(
         "Get a user media",
@@ -30,9 +24,4 @@ class Capture(Resource):
     def post(self):
         """Initiate a caputre request"""
         data = json.loads(request.data.decode("utf-8"))
-        parsed_data = {}
-        for field, ftype in Capture.required_fields:
-            if field not in data:
-                return internal_err_resp()
-            parsed_data[field] = ftype(data[field])
-        return CaptureService.capture(**parsed_data)
+        return CaptureService.capture(data)

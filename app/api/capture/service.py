@@ -1,4 +1,5 @@
 import json
+import os
 import threading
 
 import requests
@@ -8,9 +9,16 @@ from PIL import Image
 
 from app.utils import internal_err_resp, message
 from config import config_by_name
-import os
+
 
 class CaptureService:
+    required_fields = [
+        ("registry_key", str),
+        ("url", str),
+        ("stream_provider", str),
+        ("resolution", str),
+        ("output_path", str),
+    ]
     @staticmethod
     def capture_(
         registry_key,
@@ -43,30 +51,25 @@ class CaptureService:
         except requests.exceptions.HTTPError:
             print(f"Warning: failed to inform backend server ({backend_server}) for change in the status of: {registry_key} due to HTTPError")
 
-           
+
 
     @staticmethod
-    def capture(
-        registry_key,
-        url,
-        stream_provider,
-        resolution,
-        output_path
-    ):
+    def capture(data):
+        parsed_data = []
+        for field, ftype in CaptureService.required_fields:
+            if field not in data:
+                return internal_err_resp()
+            parsed_data.append(ftype(data[field]))
+
         try:
             a_thread = threading.Thread(
                 target=CaptureService.capture_,
-                args=[
-                    registry_key,
-                    url,
-                    stream_provider,
-                    resolution,
-                    output_path
-                ],
+                args=parsed_data,
             )
             a_thread.start()
             resp = message(True, "Capture request initiated")
             return resp, 200
         except Exception as error:
+            raise
             current_app.logger.error(error)
             return internal_err_resp()

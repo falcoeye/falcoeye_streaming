@@ -1,4 +1,5 @@
 import json
+import os
 import threading
 
 import requests
@@ -7,22 +8,33 @@ from flask import current_app
 from PIL import Image
 
 from app.utils import internal_err_resp, message
+from config import config_by_name
 
 
 class RecordingService:
+    required_fields = [
+        ("registry_key", str),
+        ("url", str),
+        ("stream_provider", str),
+        ("resolution", str),
+        ("output_path", str),
+    ]
+    optional_fields = [
+        ("length", int, 60)
+    ]
+
+
     @staticmethod
     def record_(
         registry_key,
         url,
         stream_provider,
         resolution,
+        output_path,
         length = -1,
-        output_path=None,
-        remote_addr=None,
-        remote_port=None,
     ):
         recorded = source.record_video(url, stream_provider,resolution,length,output_path)
-        if recorded :
+        if recorded:
             resp = message(True, "Stream has been recorded.")
             resp["registry_key"] = registry_key
             resp["capture_status"] = "RECORDED"
@@ -31,34 +43,37 @@ class RecordingService:
             resp["registry_key"] = registry_key
             resp["caputre_status"] = "FAILEDTORECORD"
 
-        if remote_addr:
-            postback_url = f"http://{remote_addr}:8000/api/capture/status"
-            requests.post(postback_url, data=json.dumps(resp))
+        try:
+            backend_server = config_by_name[os.environ.get("FLASK_CONFIG","development")].BACKEND_SERVER_NAME
+            postback_url = f"http://{backend_server}/api/capture/status/{registry_key}"
+            rv = requests.post(postback_url, data=json.dumps(resp),headers = {
+                "Content-type": "application/json"})
+            #"X-API-KEY":access_token})
+        except requests.exceptions.ConnectionError:
+            print(f"Warning: failed to inform backend server ({backend_server}) for change in the status of: {registry_key} due to ConnectionError")
+        except requests.exceptions.Timeout:
+            print(f"Warning: failed to inform backend server ({backend_server}) for change in the status of: {registry_key} due to Timeout")
+        except requests.exceptions.HTTPError:
+            print(f"Warning: failed to inform backend server ({backend_server}) for change in the status of: {registry_key} due to HTTPError")
 
     @staticmethod
-    def record(
-        registry_key,
-        url,
-        stream_provider,
-        resolution,
-        length = -1,
-        output_path=None,
-        remote_addr=None,
-        remote_port=None,
-    ):
+    def record(data):
+        parsed_data = []
+        for field, ftype in RecordingService.required_fields:
+            if field not in data:
+                return internal_err_resp()
+            parsed_data.append(ftype(data[field]))
+
+        for field, ftype, fdefault in RecordingService.optional_fields:
+            if field not in data:
+                parsed_data.append(fdefault)
+            else:
+                parsed_data.append(ftype(data[field]))
+
         try:
             a_thread = threading.Thread(
                 target=RecordingService.record_,
-                args=[
-                    registry_key,
-                    url,
-                    stream_provider,
-                    resolution,
-                    length,
-                    output_path,
-                    remote_addr,
-                    remote_port,
-                ],
+                args=parsed_data,
             )
             a_thread.start()
             resp = message(True, "Record request initiated")
