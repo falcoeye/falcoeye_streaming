@@ -12,16 +12,26 @@ api = Namespace("capture", description="Capture related operations.")
 
 @api.route("")
 class Capture(Resource):
-
-
     @api.doc(
-        "Get a user media",
+        "Post capture request",
         responses={
-            200: ("User media successfully sent"),
-            404: "User not found!",
-        },  # ,security="apikey",
+            200: ("Capture request initiated"),
+        },  
     )
     def post(self):
         """Initiate a caputre request"""
         data = json.loads(request.data.decode("utf-8"))
         return CaptureService.capture(data)
+
+@api.route("/<registry_key>")
+class Status(Resource):
+    @api.doc(
+        "Get a capture status",
+        responses={
+            200: ("Capture status sent")
+        } 
+    )
+    def get(self,registry_key):
+        """Initiate a caputre request"""
+        return CaptureService.get_capture_status(registry_key)
+
