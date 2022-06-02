@@ -1,6 +1,6 @@
+import pytest
 
 from app import create_app
-import pytest
 
 
 @pytest.fixture
@@ -20,6 +20,6 @@ def client(app):
 @pytest.fixture
 def harbour_camera():
     return {
-        "streaming_type":"StreamingServer",
-        "url":"https://www.youtube.com/watch?v=NwWgOilQuzw&t=4s",
+        "streaming_type": "StreamingServer",
+        "url": "https://www.youtube.com/watch?v=NwWgOilQuzw&t=4s",
     }
