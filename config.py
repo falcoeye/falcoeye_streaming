@@ -26,11 +26,6 @@ class Config:
 
 class DevelopmentConfig(Config):
     DEBUG = True
-    SQLALCHEMY_DATABASE_URI = os.environ.get(
-        "DATABASE_URL", "sqlite:///" + os.path.join(basedir, "data-dev.sqlite")
-    )
-    SQLALCHEMY_TRACK_MODIFICATIONS = False
-
     # Add logger
 
 
@@ -38,7 +33,6 @@ class TestingConfig(Config):
     DEBUG = True
     TESTING = True
     # In-memory SQLite for testing
-    SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
     PRESERVE_CONTEXT_ON_EXCEPTION = False
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     TEMPRARY_DATA_PATH = f"{basedir}/data/"
@@ -47,11 +41,7 @@ class TestingConfig(Config):
 class ProductionConfig(Config):
     DEBUG = False
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    SQLALCHEMY_DATABASE_URI = os.environ.get(
-        "DATABASE_URL", "sqlite:///" + os.path.join(basedir, "data.sqlite")
-    )
-
-
+    
 config_by_name = dict(
     development=DevelopmentConfig,
     testing=TestingConfig,
