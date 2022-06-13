@@ -32,7 +32,7 @@ class CaptureService:
             rv = requests.post(
                 postback_url,
                 data=json.dumps(resp),
-                headers={"Content-type": "application/json"},
+                headers={"Content-type": "application/json","X-API-KEY":os.environ.get("JWT_KEY")},
             )
 
         except requests.exceptions.ConnectionError:
@@ -70,7 +70,7 @@ class CaptureService:
             rv = requests.post(
                 postback_url,
                 data=json.dumps(resp),
-                headers={"Content-type": "application/json"},
+                headers={"Content-type": "application/json","X-API-KEY":os.environ.get("JWT_KEY")},
             )
         except requests.exceptions.ConnectionError:
             print(
