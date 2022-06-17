@@ -1,0 +1,1 @@
+docker build . -t falcoeye-streaming --build-arg SSH_KEY="$(cat ssh/id_rsa)"

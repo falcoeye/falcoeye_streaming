@@ -28,7 +28,7 @@ class StreamingServerSource:
 
         pipe = sp.Popen(
             [
-                "/usr/local/bin/ffmpeg",
+                "/usr/bin/ffmpeg",
                 "-i",
                 stream_url,
                 "-loglevel",

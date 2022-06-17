@@ -7,15 +7,22 @@ from PIL import Image
 
 from app.api.core import capture_image, record_video
 from app.utils import err_resp, internal_err_resp, message
-
+from .utils import mkdir
+import os
+import logging
+from falcoeye_kubernetes import FalcoServingKube
 
 class CaptureService:
     CAPTURE_REQUESTS = {}
-
+    backend_kube = FalcoServingKube("falcoeye-backend")
     @staticmethod
     def capture_(app, registry_key, camera, output_path, **args):
+        logging.info(f"Capturing image for {registry_key} from {camera} and store it in {output_path}")
         image = capture_image(camera)
         if image is not None:
+            fdir = os.path.dirname(output_path)
+            logging.info(f"Making directory {fdir}")
+            mkdir(fdir)
             Image.fromarray(image).save(output_path)
             resp = message(True, "Image has been captured.")
             resp["capture_status"] = "SUCCEEDED"
@@ -27,7 +34,8 @@ class CaptureService:
             if app.config["TESTING"]:
                 CaptureService.CAPTURE_REQUESTS[registry_key] = resp["capture_status"]
 
-            backend_server = app.config["BACKEND_SERVER_NAME"]
+            logging.info(f"Posting new status {resp['capture_status']} to backend")
+            backend_server = CaptureService.backend_kube.get_service_address()
             postback_url = f"http://{backend_server}/api/capture/status/{registry_key}"
             rv = requests.post(
                 postback_url,
@@ -65,7 +73,7 @@ class CaptureService:
         if app.config.get("TESTING"):
             CaptureService.CAPTURE_REQUESTS[registry_key] = resp["capture_status"]
         try:
-            backend_server = current_app.config["BACKEND_SERVER_NAME"]
+            backend_server = CaptureService.backend_kube.get_service_address()
             postback_url = f"http://{backend_server}/api/capture/status/{registry_key}"
             rv = requests.post(
                 postback_url,
