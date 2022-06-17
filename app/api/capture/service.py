@@ -34,29 +34,28 @@ class CaptureService:
             if app.config["TESTING"]:
                 CaptureService.CAPTURE_REQUESTS[registry_key] = resp["capture_status"]
 
-            logging.info(f"Posting new status {resp['capture_status']} to backend")
+            
             backend_server = CaptureService.backend_kube.get_service_address()
-            postback_url = f"http://{backend_server}/api/capture/status/{registry_key}"
+            postback_url = f"http://{backend_server}/api/capture/{registry_key}"
+            logging.info(f"Posting new status {resp['capture_status']} to backend {postback_url}")
             rv = requests.post(
                 postback_url,
                 data=json.dumps(resp),
                 headers={"Content-type": "application/json","X-API-KEY":os.environ.get("JWT_KEY")},
             )
+            logging.info(f"{rv.json()}")
 
         except requests.exceptions.ConnectionError:
-            print(
+            logging.error(
                 f"Warning: failed to inform backend server ({backend_server}) for change in the status "
-                f"of: {registry_key} due to ConnectionError"
             )
         except requests.exceptions.Timeout:
-            print(
+            logging.error(
                 f"Warning: failed to inform backend server ({backend_server}) for change in the status "
-                f"of: {registry_key} due to Timeout"
             )
         except requests.exceptions.HTTPError:
-            print(
+            logging.error(
                 f"Warning: failed to inform backend server ({backend_server}) for change in the status "
-                f"of: {registry_key} due to HTTPError"
             )
 
     @staticmethod
