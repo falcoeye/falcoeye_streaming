@@ -60,8 +60,10 @@ class CaptureService:
 
     @staticmethod
     def record_(app, registry_key, camera, output_path, length=60, **args):
-
+        
+        logging.info(f"Recording video with camera {camera} for {length} seconds")
         recorded = record_video(camera, length, output_path)
+        logging.info(f"Video recorded? {recorded}")
         if recorded:
             resp = message(True, "Video has been recorded.")
             resp["capture_status"] = "SUCCEEDED"
@@ -105,17 +107,19 @@ class CaptureService:
 
             if current_app.config.get("TESTING"):
                 CaptureService.CAPTURE_REQUESTS[data["registry_key"]] = "STARTED"
-
+            
+            logging.info(f"capture request {data['capture_type']} received with {data}")
             # needed to be able to access app config for testing
             data["app"] = current_app._get_current_object()
             a_thread = threading.Thread(target=capture_m, kwargs=data)
             a_thread.start()
             # capture_m(**data)
-
+            logging.info(f"thread started")
             # Keep reference to check on status without going to backend
             resp = message(True, "Capture request initiated")
             return resp, 200
         except Exception as error:
+            logging.error(error)
             current_app.logger.error(error)
             return internal_err_resp()
 

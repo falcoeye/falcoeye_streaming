@@ -58,16 +58,18 @@ class StreamingServerSource:
     def record_video(streamer, width, height, length, filename):
         count_frame = 0
         lengthFrames = length * 30  # Assuming 30 frames per second
+        logging.info(f"Starting recording. Will grab {lengthFrames} frames")
         frames = np.zeros((lengthFrames, height, width, 3), dtype=np.uint8)
         while count_frame < lengthFrames:
             raw_image = streamer.stdout.read(height * width * 3)
-
+            logging.info(f"Frame {count_frame+1}/{lengthFrames}")
             frames[count_frame] = (
                 np.fromstring(raw_image, dtype="uint8")
                 .reshape((height, width, 3))
                 .astype(np.uint8)
             )
             count_frame += 1
+        logging.info(f"Starting writing video. Will write it in {filename}")
         writer = cv2.VideoWriter(
             filename,
             fourcc=cv2.VideoWriter_fourcc(*"mp4v"),
@@ -137,9 +139,11 @@ class YoutubeSource(StreamingServerSource):
     @staticmethod
     def record_video(url, length, filename):
         streamer, width, height = YoutubeSource.open(url)
+        logging.info(f"Streamer opened with width={width} height={height}")
         frame = StreamingServerSource.record_video(
             streamer, width, height, length, filename
         )
+        logging.info("Recording finished. Killing streamer")
         streamer.kill()
         return True
 
@@ -215,6 +219,7 @@ def capture_image(camera):
 
 def record_video_from_streaming_server(url, length, outputpath):
     if "youtube" in url:
+        logging.info("Recording from youtube server")
         return YoutubeSource.record_video(url, length, outputpath)
     elif "angelcam" in url:
         return AngelCamSource.record_video(url, length, outputpath)
@@ -226,6 +231,7 @@ def record_video_from_rtsp(host, port, username, password, length, outputpath):
 
 def record_video(camera, length, outputpath):
     if "url" in camera:
+        logging.info(f"Recording from streaming server {camera['url']}")
         return record_video_from_streaming_server(camera["url"], length, outputpath)
     else:
         return record_video_from_rtsp(
