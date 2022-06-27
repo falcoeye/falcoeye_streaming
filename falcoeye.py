@@ -28,9 +28,12 @@ payload =  {
         "email": streaming_user.strip(),
         "password": streaming_password.strip()
 }
+logging.info(f"Logging to backend server on {URL}")
 r = requests.post(f"{URL}/auth/login", json=payload)
+
 assert "access_token" in r.json()
 access_token = r.json()["access_token"]
+logging.info(f"Access token received with size {len(access_token)}")
 os.environ["JWT_KEY"] = access_token
 
 app = create_app(os.getenv("FLASK_CONFIG") or "default")

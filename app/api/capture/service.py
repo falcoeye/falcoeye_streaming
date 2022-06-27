@@ -43,7 +43,7 @@ class CaptureService:
                 data=json.dumps(resp),
                 headers={"Content-type": "application/json","X-API-KEY":os.environ.get("JWT_KEY")},
             )
-            logging.info(f"{rv.json()}")
+            logging.info(f"Response received {rv.json()}")
 
         except requests.exceptions.ConnectionError:
             logging.error(
@@ -82,6 +82,7 @@ class CaptureService:
                 data=json.dumps(resp),
                 headers={"Content-type": "application/json","X-API-KEY":os.environ.get("JWT_KEY")},
             )
+            logging.info(f"Response received {rv.json()}")
         except requests.exceptions.ConnectionError:
             logging.error(
                 f"Warning: failed to inform backend server ({backend_server}) for change in the status "
