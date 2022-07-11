@@ -20,6 +20,11 @@ if os.path.exists(dotenv_path):
 streaming_user = os.getenv("STREAMING_USER")
 streaming_password = os.getenv("STREAMING_PASSWORD")
 
+# No real use for this now in falcoeye_backend. It is good for falcoeye_workflow only
+artifact_registry = os.getenv("ARTIFACT_REGISTRY")
+if artifact_registry:
+    FalcoServingKube.set_artifact_registry(artifact_registry)
+
 backend_kube = FalcoServingKube("falcoeye-backend")
 backend_server = backend_kube.get_service_address()
 URL = f"http://{backend_server}"
