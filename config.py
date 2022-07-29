@@ -1,6 +1,6 @@
 import os
 from datetime import timedelta
-
+import fsspec
 basedir = os.path.abspath(os.path.dirname(__file__))
 
 
@@ -9,8 +9,32 @@ class Config:
 
     # flask restx settings
     SWAGGER_UI_DOC_EXPANSION = "list"
+    BACKEND_HOST = os.environ.get("BACKEND_HOST", "http://127.0.0.1:5000")
 
-    BACKEND_SERVER_NAME = os.environ.get("BACKEND_SERVER_NAME", "http://127.0.0.1:5000")
+    # file system interface
+    FS_PROTOCOL = os.environ.get("FS_PROTOCOL", "file")
+    
+    
+    if FS_PROTOCOL in ("gs", "gcs"):
+        import gcsfs
+        FS_TOKEN = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS", "cloud")
+        FS_BUCKET = os.environ.get("FS_BUCKET", "")
+        FS_PROJECT = os.environ.get("FS_PROJECT", "falcoeye")
+        FS_OBJ = gcsfs.GCSFileSystem(project=FS_PROJECT, token=FS_TOKEN)
+        FS_IS_REMOTE = True
+        TEMPORARY_DATA_PATH = os.environ.get(
+            "TEMPORARY_DATA_PATH", f"{FS_BUCKET}/falcoeye-temp/data/"
+        )
+
+    elif FS_PROTOCOL == "file":
+        FS_OBJ = fsspec.filesystem(FS_PROTOCOL)
+        FS_IS_REMOTE = False
+        TEMPORARY_DATA_PATH = os.environ.get(
+            "TEMPORARY_DATA_PATH", f"{basedir}/tests/falcoeye-temp/data/"
+        )
+    else:
+        raise SystemError(f"support for {FS_PROTOCOL} has not been added yet")
+
 
 
 class DevelopmentConfig(Config):

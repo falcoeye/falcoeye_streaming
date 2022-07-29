@@ -51,7 +51,7 @@ def test_capture_image(mock_post, client, harbour_camera):
     assert resp.json.get("message") == "Capture request initiated"
 
     time_before_kill = 100
-    sleep_time = 3
+    sleep_time = 4
     loop_until_finished(client, registry_key, time_before_kill, sleep_time)
 
 

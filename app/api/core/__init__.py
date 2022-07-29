@@ -6,6 +6,12 @@ import cv2
 import numpy as np
 import requests
 import streamlink
+from datetime import datetime
+from app.utils import put, random_string,tempdir
+import tempfile
+import os
+
+
 
 
 class StreamingServerSource:
@@ -20,15 +26,20 @@ class StreamingServerSource:
             logging.warning(f"Warning: NO STREAM AVAILABLE in {url}")
             return None
         chosen_res = None
+        logging.info(f"streams are found")
         for r in resolution:
             if r in streams and hasattr(streams[r], "url"):
                 stream_url = streams[r].url
                 chosen_res = r
                 break
-
+        logging.info(f"chosen stream {stream_url} {chosen_res}")
+        
+        ffmpeg = "/usr/local/bin/ffmpeg"
+        if not os.path.exists(ffmpeg):
+            ffmpeg = "/usr/bin/ffmpeg"
         pipe = sp.Popen(
             [
-                "/usr/bin/ffmpeg",
+                ffmpeg,
                 "-i",
                 stream_url,
                 "-loglevel",
@@ -56,6 +67,7 @@ class StreamingServerSource:
 
     @staticmethod
     def record_video(streamer, width, height, length, filename):
+        # TODO: handle errors
         count_frame = 0
         lengthFrames = length * 30  # Assuming 30 frames per second
         logging.info(f"Starting recording. Will grab {lengthFrames} frames")
@@ -70,16 +82,21 @@ class StreamingServerSource:
             )
             count_frame += 1
         logging.info(f"Starting writing video. Will write it in {filename}")
+        tempfile =  f'{tempdir()}/{datetime.now().strftime("%m_%d_%Y")}_{random_string()}.mp4'
+        logging.info(f"Creating temp file first {tempfile}")
         writer = cv2.VideoWriter(
-            filename,
+            tempfile,
             fourcc=cv2.VideoWriter_fourcc(*"mp4v"),
             fps=30,
             frameSize=(width, height),
             isColor=True,
         )
+        logging.info(f"Writing to temp file  {tempfile}")
         for frame in frames:
             writer.write(frame)
         writer.release()
+        
+        return True,tempfile
 
 
 class AngelCamSource(StreamingServerSource):
@@ -104,11 +121,11 @@ class AngelCamSource(StreamingServerSource):
     @staticmethod
     def record_video(url, length, filename):
         streamer, width, height = AngelCamSource.open(url)
-        frame = StreamingServerSource.record_video(
+        succeeded,tmp_path = StreamingServerSource.record_video(
             streamer, width, height, length, filename
         )
         streamer.kill()
-        return True
+        return succeeded,tmp_path
 
 
 class YoutubeSource(StreamingServerSource):
@@ -122,17 +139,22 @@ class YoutubeSource(StreamingServerSource):
 
     @staticmethod
     def open(url):
+        logging.info(f"Opening streamer {url}")
         streamer, chosen_res = StreamingServerSource.create_stream_pipe(
             url, ["1080p", "720p", "480p", "360p", "240p"]
         )
+        logging.info(f"Chosen resolution {chosen_res}")
         res = YoutubeSource.resolutions[chosen_res]
         width, height = res["width"], res["height"]
         return streamer, width, height
 
     @staticmethod
     def capture_image(url):
+        logging.info(f"Capturing image from youtube source {url}")
         streamer, width, height = YoutubeSource.open(url)
+        logging.info(f"Streamer opened width: {width} height: {height}")
         frame = StreamingServerSource.read(streamer, width, height)
+        logging.info("Capturing finished. Killing streamer")
         streamer.kill()
         return frame
 
@@ -140,12 +162,12 @@ class YoutubeSource(StreamingServerSource):
     def record_video(url, length, filename):
         streamer, width, height = YoutubeSource.open(url)
         logging.info(f"Streamer opened with width={width} height={height}")
-        frame = StreamingServerSource.record_video(
+        succeeded, tmp_path = StreamingServerSource.record_video(
             streamer, width, height, length, filename
         )
         logging.info("Recording finished. Killing streamer")
         streamer.kill()
-        return True
+        return succeeded,tmp_path
 
 
 class RTSPSource:
@@ -199,6 +221,7 @@ class RTSPSource:
 
 def capture_image_from_streaming_server(url):
     if "youtube" in url:
+        logging.info(f"Recording from youtube source {url}")
         return YoutubeSource.capture_image(url)
     elif "angelcam" in url:
         return AngelCamSource.capture_image(url)
@@ -210,6 +233,7 @@ def capture_image_from_rtsp(host, port, username, password):
 
 def capture_image(camera):
     if "url" in camera:
+        logging.info(f"Recording from streaming server {camera['url']}")
         return capture_image_from_streaming_server(camera["url"])
     else:
         return capture_image_from_rtsp(

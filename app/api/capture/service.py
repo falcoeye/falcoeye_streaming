@@ -6,24 +6,34 @@ from flask import current_app
 from PIL import Image
 
 from app.api.core import capture_image, record_video
-from app.utils import err_resp, internal_err_resp, message
-from .utils import mkdir
+from app.utils import err_resp, internal_err_resp, message,mkdir,put
 import os
 import logging
-from falcoeye_kubernetes import FalcoServingKube
+import io
+import gcsfs
+import numpy as np 
+
 
 class CaptureService:
     CAPTURE_REQUESTS = {}
-    backend_kube = FalcoServingKube("falcoeye-backend")
     @staticmethod
     def capture_(app, registry_key, camera, output_path, **args):
         logging.info(f"Capturing image for {registry_key} from {camera} and store it in {output_path}")
         image = capture_image(camera)
+        #image = np.ones((100,100,3),dtype=np.uint8)
         if image is not None:
             fdir = os.path.dirname(output_path)
             logging.info(f"Making directory {fdir}")
-            mkdir(fdir)
-            Image.fromarray(image).save(output_path)
+            
+            FS_OBJ = app.config["FS_OBJ"]
+            mkdir(fdir,app)
+            with FS_OBJ.open(os.path.relpath(output_path), "wb") as f:
+                byteImgIO = io.BytesIO()
+                Image.fromarray(image).save(byteImgIO, "JPEG")
+                byteImgIO.seek(0)
+                byteImg = byteImgIO.read()
+                f.write(byteImg)
+
             resp = message(True, "Image has been captured.")
             resp["capture_status"] = "SUCCEEDED"
         else:
@@ -35,15 +45,19 @@ class CaptureService:
                 CaptureService.CAPTURE_REQUESTS[registry_key] = resp["capture_status"]
 
             
-            backend_server = CaptureService.backend_kube.get_service_address()
-            postback_url = f"http://{backend_server}/api/capture/{registry_key}"
+            backend_server = app.config["BACKEND_HOST"]
+            postback_url = f"{backend_server}/api/capture/{registry_key}"
             logging.info(f"Posting new status {resp['capture_status']} to backend {postback_url}")
             rv = requests.post(
                 postback_url,
                 data=json.dumps(resp),
                 headers={"Content-type": "application/json","X-API-KEY":os.environ.get("JWT_KEY")},
             )
-            logging.info(f"Response received {rv.json()}")
+            if rv.headers["content-type"].strip().startswith("application/json"):
+                logging.info(f"Response received {rv.json()}")
+
+            else:
+                logging.info(f"Request might have failed. No json response received")
 
         except requests.exceptions.ConnectionError:
             logging.error(
@@ -62,9 +76,18 @@ class CaptureService:
     def record_(app, registry_key, camera, output_path, length=60, **args):
         
         logging.info(f"Recording video with camera {camera} for {length} seconds")
-        recorded = record_video(camera, length, output_path)
+        recorded, tmp_path = record_video(camera, length, output_path)
         logging.info(f"Video recorded? {recorded}")
         if recorded:
+            fdir = os.path.dirname(output_path)
+            logging.info(f"Making directory {fdir}")
+            mkdir(fdir,app)
+
+            logging.info(f"Moving recording from {tmp_path} to {output_path}")
+            put(tmp_path,output_path,app)
+
+            logging.info(f"Removing {tmp_path}")
+            os.remove(tmp_path)
             resp = message(True, "Video has been recorded.")
             resp["capture_status"] = "SUCCEEDED"
         else:
@@ -73,16 +96,22 @@ class CaptureService:
 
         if app.config.get("TESTING"):
             CaptureService.CAPTURE_REQUESTS[registry_key] = resp["capture_status"]
+        
         try:
-            backend_server = CaptureService.backend_kube.get_service_address()
-            postback_url = f"http://{backend_server}/api/capture/{registry_key}"
+
+            backend_server = app.config["BACKEND_HOST"]
+            postback_url = f"{backend_server}/api/capture/{registry_key}"
             logging.info(f"Posting new status {resp['capture_status']} to backend {postback_url}")
             rv = requests.post(
                 postback_url,
                 data=json.dumps(resp),
                 headers={"Content-type": "application/json","X-API-KEY":os.environ.get("JWT_KEY")},
             )
-            logging.info(f"Response received {rv.json()}")
+            if rv.headers["content-type"].strip().startswith("application/json"):
+                logging.info(f"Response received {rv.json()}")
+            else:
+                logging.warning(f"Request might have failed. No json response received")
+
         except requests.exceptions.ConnectionError:
             logging.error(
                 f"Warning: failed to inform backend server ({backend_server}) for change in the status "
@@ -102,6 +131,7 @@ class CaptureService:
     @staticmethod
     def capture(data):
         try:
+            logging.info(data)
             if data["capture_type"] == "image":
                 capture_m = CaptureService.capture_
             else:
@@ -115,7 +145,7 @@ class CaptureService:
             data["app"] = current_app._get_current_object()
             a_thread = threading.Thread(target=capture_m, kwargs=data)
             a_thread.start()
-            # capture_m(**data)
+            #capture_m(**data)
             logging.info(f"thread started")
             # Keep reference to check on status without going to backend
             resp = message(True, "Capture request initiated")
