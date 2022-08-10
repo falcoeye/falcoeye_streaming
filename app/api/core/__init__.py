@@ -95,8 +95,10 @@ class StreamingServerSource:
         for frame in frames:
             writer.write(frame)
         writer.release()
-        
-        return True,tempfile
+        thumbnail_frame = frames[0].copy()
+        # freeing memory
+        frames = None
+        return True,tempfile,thumbnail_frame
 
 
 class AngelCamSource(StreamingServerSource):
@@ -121,11 +123,11 @@ class AngelCamSource(StreamingServerSource):
     @staticmethod
     def record_video(url, length, filename):
         streamer, width, height = AngelCamSource.open(url)
-        succeeded,tmp_path = StreamingServerSource.record_video(
+        succeeded,tmp_path,thumbnail_frame = StreamingServerSource.record_video(
             streamer, width, height, length, filename
         )
         streamer.kill()
-        return succeeded,tmp_path
+        return succeeded,tmp_path,thumbnail_frame
 
 
 class YoutubeSource(StreamingServerSource):
@@ -162,12 +164,12 @@ class YoutubeSource(StreamingServerSource):
     def record_video(url, length, filename):
         streamer, width, height = YoutubeSource.open(url)
         logging.info(f"Streamer opened with width={width} height={height}")
-        succeeded, tmp_path = StreamingServerSource.record_video(
+        succeeded, tmp_path, thumbnail_frame = StreamingServerSource.record_video(
             streamer, width, height, length, filename
         )
         logging.info("Recording finished. Killing streamer")
         streamer.kill()
-        return succeeded,tmp_path
+        return succeeded,tmp_path,thumbnail_frame
 
 
 class RTSPSource:
@@ -216,7 +218,7 @@ class RTSPSource:
         for frame in frames:
             writer.write(frame)
         writer.release()
-        return True
+        return True, 
 
 
 def capture_image_from_streaming_server(url):

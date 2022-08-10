@@ -42,7 +42,7 @@ def test_capture_image(mock_post, client, harbour_camera):
     data = {
         "registry_key": registry_key,
         "camera": harbour_camera,
-        "output_path": "tests/media/test.jpg",
+        "output_path": "tests/media/test_capture.jpg",
         "capture_type": "image",
     }
     resp = client.post("/api/capture", data=json.dumps(data))
@@ -57,13 +57,13 @@ def test_capture_image(mock_post, client, harbour_camera):
 
 @mock.patch("app.api.capture.service.requests.post", side_effect=mocked_streamer_post)
 def test_capture_video(mock_post, client, harbour_camera):
-    registry_key = "test_picture"
+    registry_key = "test_video"
     data = {
         "registry_key": registry_key,
         "camera": harbour_camera,
-        "output_path": "tests/media/test.mp4",
+        "output_path": "tests/media/test_record.mp4",
         "capture_type": "video",
-        "length": 3,
+        "length": 1,
     }
     resp = client.post("/api/capture", data=json.dumps(data))
 

@@ -27,9 +27,23 @@ class CaptureService:
             
             FS_OBJ = app.config["FS_OBJ"]
             mkdir(fdir,app)
+            
+            
+            img = Image.fromarray(image)
             with FS_OBJ.open(os.path.relpath(output_path), "wb") as f:
                 byteImgIO = io.BytesIO()
-                Image.fromarray(image).save(byteImgIO, "JPEG")
+                img.save(byteImgIO, "JPEG")
+                byteImgIO.seek(0)
+                byteImg = byteImgIO.read()
+                f.write(byteImg)
+            
+            thumbnail_path = f"{os.path.splitext(output_path)[0]}_260.jpg"
+            logging.info(f"Creating thumbnail image {thumbnail_path}")
+            with FS_OBJ.open(os.path.relpath(thumbnail_path), "wb") as f:
+                byteImgIO = io.BytesIO()
+                img.thumbnail((260,260))
+                logging.info(f"thumbnail size {img.size}")
+                img.save(byteImgIO, "JPEG")
                 byteImgIO.seek(0)
                 byteImg = byteImgIO.read()
                 f.write(byteImg)
@@ -76,7 +90,7 @@ class CaptureService:
     def record_(app, registry_key, camera, output_path, length=60, **args):
         
         logging.info(f"Recording video with camera {camera} for {length} seconds")
-        recorded, tmp_path = record_video(camera, length, output_path)
+        recorded, tmp_path,thumbnail_frame = record_video(camera, length, output_path)
         logging.info(f"Video recorded? {recorded}")
         if recorded:
             fdir = os.path.dirname(output_path)
@@ -85,6 +99,17 @@ class CaptureService:
 
             logging.info(f"Moving recording from {tmp_path} to {output_path}")
             put(tmp_path,output_path,app)
+            thumbnail_path = f"{os.path.splitext(output_path)[0]}_260.jpg"
+            logging.info(f"Creating thumbnail image {thumbnail_path}")
+            FS_OBJ = app.config["FS_OBJ"]
+            with FS_OBJ.open(os.path.relpath(thumbnail_path), "wb") as f:
+                byteImgIO = io.BytesIO()
+                img = Image.fromarray(thumbnail_frame)
+                img.thumbnail((260,260))
+                img.save(byteImgIO, "JPEG")
+                byteImgIO.seek(0)
+                byteImg = byteImgIO.read()
+                f.write(byteImg)
 
             logging.info(f"Removing {tmp_path}")
             os.remove(tmp_path)
