@@ -89,6 +89,12 @@ class CaptureService:
     @staticmethod
     def record_(app, registry_key, camera, output_path, length=60, **args):
         
+        if type(length) == str:
+            try:
+                length = int(length)
+            except Exception as e:
+                resp = message(False, "Couldn't record video. Length type is wrong")
+                resp["capture_status"] = "FAILED"
         logging.info(f"Recording video with camera {camera} for {length} seconds")
         recorded, tmp_path,thumbnail_frame = record_video(camera, length, output_path)
         logging.info(f"Video recorded? {recorded}")

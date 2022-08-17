@@ -95,7 +95,8 @@ class StreamingServerSource:
         for frame in frames:
             writer.write(frame)
         writer.release()
-        thumbnail_frame = frames[0].copy()
+        # from bgr to rgb
+        thumbnail_frame = frames[0].copy()[:,:,::-1]
         # freeing memory
         frames = None
         return True,tempfile,thumbnail_frame
