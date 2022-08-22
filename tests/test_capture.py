@@ -73,3 +73,20 @@ def test_capture_video(mock_post, client, harbour_camera):
     time_before_kill = 100
     sleep_time = 3
     loop_until_finished(client, registry_key, time_before_kill, sleep_time)
+
+@mock.patch("app.api.capture.service.requests.post", side_effect=mocked_streamer_post)
+def test_generate_thumbnail(mock_post, client):
+    registry_key = "test_video"
+    data = {
+        "video_file": "tests/media/test_record.mp4",
+        "output_path": "tests/media/test_record_260.jpg",
+        "capture_type": "thumbnail"
+    }
+    resp = client.post("/api/capture", data=json.dumps(data))
+
+    assert resp.status_code == 200
+    assert resp.json.get("message") == "thumbnail created"
+
+    time_before_kill = 100
+    sleep_time = 3
+    loop_until_finished(client, registry_key, time_before_kill, sleep_time)

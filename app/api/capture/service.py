@@ -5,13 +5,14 @@ import requests
 from flask import current_app
 from PIL import Image
 
-from app.api.core import capture_image, record_video
+from app.api.core import capture_image, record_video,generate_thumbnail
 from app.utils import err_resp, internal_err_resp, message,mkdir,put
 import os
 import logging
 import io
 import gcsfs
 import numpy as np 
+import subprocess
 
 
 class CaptureService:
@@ -160,13 +161,35 @@ class CaptureService:
             )
 
     @staticmethod
+    def generate_thumbnail(app, video_file, output_path, **args):
+        FS_OBJ = app.config["FS_OBJ"]
+        thumbnail = generate_thumbnail(video_file)
+        logging.info(f"Creating thumbnail image {output_path}")
+        img = Image.fromarray(thumbnail)
+        img.thumbnail((260,260))
+        with FS_OBJ.open(os.path.relpath(output_path), "wb") as f:
+            byteImgIO = io.BytesIO()
+            img.save(byteImgIO, "JPEG")
+            byteImgIO.seek(0)
+            byteImg = byteImgIO.read()
+            f.write(byteImg)
+
+        resp = message(True, "thumbnail created")
+        return resp,200
+
+    @staticmethod
     def capture(data):
         try:
             logging.info(data)
             if data["capture_type"] == "image":
                 capture_m = CaptureService.capture_
-            else:
+            elif data["capture_type"] == "video":
                 capture_m = CaptureService.record_
+            elif data["capture_type"] == "thumbnail":
+                filename = data.get("video_file")
+                output_path = data.get("output_path")
+                return CaptureService.generate_thumbnail(current_app._get_current_object(),
+                    filename,output_path)
 
             if current_app.config.get("TESTING"):
                 CaptureService.CAPTURE_REQUESTS[data["registry_key"]] = "STARTED"

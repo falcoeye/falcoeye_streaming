@@ -130,7 +130,6 @@ class AngelCamSource(StreamingServerSource):
         streamer.kill()
         return succeeded,tmp_path,thumbnail_frame
 
-
 class YoutubeSource(StreamingServerSource):
     resolutions = {
         "240p": {"width": 426, "height": 240},
@@ -172,7 +171,6 @@ class YoutubeSource(StreamingServerSource):
         streamer.kill()
         return succeeded,tmp_path,thumbnail_frame
 
-
 class RTSPSource:
     @staticmethod
     def open(ipv4, port, username, password):
@@ -199,27 +197,35 @@ class RTSPSource:
 
         count_frame = 0
         lengthFrames = length * 30  # Assuming 30 frames per second
-        frames = np.zeros((lengthFrames, height, width, 3))
+        frames = np.zeros((lengthFrames, height, width, 3),dtype=np.uint8)
 
-        while True:
-            ret, frame = RTSPSource.read(streamer)
+        while count_frame < lengthFrames:
+            ret, frame = streamer.read()
             if not ret:
                 break
-            frames[count_frame] = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            frames[count_frame] = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB).astype(np.uint8)
             count_frame += 1
 
         streamer.release()
+        logging.info(f"Starting writing video. Will write it in {filename}")
+        tempfile =  f'{tempdir()}/{datetime.now().strftime("%m_%d_%Y")}_{random_string()}.mp4'
+        logging.info(f"Creating temp file first {tempfile}")
         writer = cv2.VideoWriter(
-            filename,
+            tempfile,
             fourcc=cv2.VideoWriter_fourcc(*"mp4v"),
             fps=30,
             frameSize=(width, height),
             isColor=True,
         )
+        logging.info(f"Writing to temp file  {tempfile}")
         for frame in frames:
             writer.write(frame)
         writer.release()
-        return True, 
+        # from bgr to rgb
+        thumbnail_frame = frames[0].copy()[:,:,::-1]
+        # freeing memory
+        frames = None
+        return True, tempfile,thumbnail_frame
 
 
 def capture_image_from_streaming_server(url):
@@ -269,3 +275,10 @@ def record_video(camera, length, outputpath):
             length,
             outputpath,
         )
+
+def generate_thumbnail(url):
+    streamer = cv2.VideoCapture(url)
+    ret, frame = streamer.read()
+    frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    streamer.release()
+    return frame
