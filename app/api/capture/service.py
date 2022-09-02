@@ -6,7 +6,7 @@ from flask import current_app
 from PIL import Image
 
 from app.api.core import capture_image, record_video,generate_thumbnail
-from app.utils import err_resp, internal_err_resp, message,mkdir,put
+from app.utils import err_resp, internal_err_resp, message,mkdir,put, get_service
 import os
 import logging
 import io
@@ -60,7 +60,7 @@ class CaptureService:
                 CaptureService.CAPTURE_REQUESTS[registry_key] = resp["capture_status"]
 
             
-            backend_server = app.config["BACKEND_HOST"]
+            backend_server = get_service("falcoeye-backend",app=app)
             postback_url = f"{backend_server}/api/capture/{registry_key}"
             logging.info(f"Posting new status {resp['capture_status']} to backend {postback_url}")
             rv = requests.post(
@@ -119,7 +119,7 @@ class CaptureService:
                 f.write(byteImg)
 
             logging.info(f"Removing {tmp_path}")
-            os.remove(tmp_path)
+            #os.remove(tmp_path)
             resp = message(True, "Video has been recorded.")
             resp["capture_status"] = "SUCCEEDED"
         else:
@@ -131,7 +131,7 @@ class CaptureService:
         
         try:
 
-            backend_server = app.config["BACKEND_HOST"]
+            backend_server = get_service("falcoeye-backend",app=app)
             postback_url = f"{backend_server}/api/capture/{registry_key}"
             logging.info(f"Posting new status {resp['capture_status']} to backend {postback_url}")
             rv = requests.post(

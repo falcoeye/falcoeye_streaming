@@ -2,7 +2,7 @@ import os
 from datetime import timedelta
 import fsspec
 basedir = os.path.abspath(os.path.dirname(__file__))
-
+from k8s import FalcoServingKube
 
 class Config:
     DEBUG = False
@@ -13,13 +13,23 @@ class Config:
 
     # file system interface
     FS_PROTOCOL = os.environ.get("FS_PROTOCOL", "file")
-    
+    DEPLOYMENT = os.environ.get("DEPLOYMENT","local")
+
+    SERVICES = {
+        "falcoeye-backend": {
+            "env": "BACKEND_HOST",
+            "k8s": None
+        }
+    }
+    if DEPLOYMENT == "k8s":
+        SERVICES["falcoeye-backend"]["k8s"] = FalcoServingKube("falcoeye-backend")
     
     if FS_PROTOCOL in ("gs", "gcs"):
         import gcsfs
         FS_TOKEN = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS", "cloud")
         FS_BUCKET = os.environ.get("FS_BUCKET", "")
         FS_PROJECT = os.environ.get("FS_PROJECT", "falcoeye")
+        DEPLOYMENT = os.environ.get("DEPLOYMENT")
         FS_OBJ = gcsfs.GCSFileSystem(project=FS_PROJECT, token=FS_TOKEN)
         FS_IS_REMOTE = True
         TEMPORARY_DATA_PATH = os.environ.get(

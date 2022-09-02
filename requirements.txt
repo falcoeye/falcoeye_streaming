@@ -17,10 +17,10 @@ isodate==0.6.1
 itsdangerous==2.1.2
 Jinja2==3.1.2
 jsonschema==4.5.1
+kubernetes==24.2.0
 lxml==4.9.0
 MarkupSafe==2.1.1
 numpy==1.22.4
-opencv-python==4.5.5.64
 packaging==21.3
 Pillow==9.1.1
 pluggy==1.0.0
@@ -33,6 +33,7 @@ PySocks==1.7.1
 pytest==7.1.2
 python-dotenv==0.20.0
 pytz==2022.1
+PyYAML==6.0
 requests==2.27.1
 six==1.16.0
 slim==0.1

@@ -84,9 +84,10 @@ class StreamingServerSource:
         logging.info(f"Starting writing video. Will write it in {filename}")
         tempfile =  f'{tempdir()}/{datetime.now().strftime("%m_%d_%Y")}_{random_string()}.mp4'
         logging.info(f"Creating temp file first {tempfile}")
+        fourcc = cv2.VideoWriter_fourcc(*'H264')
         writer = cv2.VideoWriter(
             tempfile,
-            fourcc=cv2.VideoWriter_fourcc(*"mp4v"),
+            fourcc=fourcc,
             fps=30,
             frameSize=(width, height),
             isColor=True,
@@ -210,9 +211,10 @@ class RTSPSource:
         logging.info(f"Starting writing video. Will write it in {filename}")
         tempfile =  f'{tempdir()}/{datetime.now().strftime("%m_%d_%Y")}_{random_string()}.mp4'
         logging.info(f"Creating temp file first {tempfile}")
+        fourcc = cv2.VideoWriter_fourcc(*'H264')
         writer = cv2.VideoWriter(
             tempfile,
-            fourcc=cv2.VideoWriter_fourcc(*"mp4v"),
+            fourcc=fourcc,
             fps=30,
             frameSize=(width, height),
             isColor=True,
