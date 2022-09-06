@@ -10,7 +10,7 @@ from datetime import datetime
 from app.utils import put, random_string,tempdir
 import tempfile
 import os
-
+import ffmpeg
 
 
 
@@ -33,6 +33,10 @@ class StreamingServerSource:
                 chosen_res = r
                 break
         logging.info(f"chosen stream {stream_url} {chosen_res}")
+
+        logging.info(f"Proping stream {stream_url}")
+        p = StreamingServerSource.probe_stream(stream_url)
+        
         
         ffmpeg = "/usr/local/bin/ffmpeg"
         if not os.path.exists(ffmpeg):
@@ -56,7 +60,12 @@ class StreamingServerSource:
             stdin=sp.PIPE,
             stdout=sp.PIPE,
         )
-        return pipe, chosen_res
+        return pipe, p
+
+    @staticmethod
+    def probe_stream(stream_url):
+        p = ffmpeg.probe(stream_url, select_streams='v')
+        return p["streams"][0]
 
     @staticmethod
     def read(streamer, width, height):
@@ -110,7 +119,7 @@ class AngelCamSource(StreamingServerSource):
     def open(url):
         c = requests.get(url).content.decode("utf-8")
         m3u8 = re.findall(r"\'https://.*angelcam.*token=.*\'", c)[0].strip("'")
-        streamer, chosen_res = StreamingServerSource.create_pipe(m3u8, ["best"])
+        streamer, chosen_res = StreamingServerSource.create_stream_pipe(m3u8, ["best"])
         res = AngelCamSource.resolutions[chosen_res]
         width, height = res["width"], res["height"]
         return streamer, width, height
@@ -120,7 +129,7 @@ class AngelCamSource(StreamingServerSource):
         streamer, width, height = AngelCamSource.open(url)
         frame = StreamingServerSource.read(streamer, width, height)
         streamer.kill()
-        return True, frame
+        return frame
 
     @staticmethod
     def record_video(url, length, filename):
@@ -130,6 +139,33 @@ class AngelCamSource(StreamingServerSource):
         )
         streamer.kill()
         return succeeded,tmp_path,thumbnail_frame
+
+class M3U8Source(StreamingServerSource):
+    resolutions = {"best": {"width": 320, "height": 180}}
+    @staticmethod
+    def open(url):
+        m3u8 = url
+        streamer, probe = StreamingServerSource.create_stream_pipe(m3u8, ["best"])
+        width, height = probe["width"],probe["height"]
+        logging.info(f"Stream opened with resolution: {width}X{height}")
+        return streamer, width, height
+
+    @staticmethod
+    def capture_image(url):
+        streamer, width, height = M3U8Source.open(url)
+        frame = StreamingServerSource.read(streamer, width, height)
+        streamer.kill()
+        return frame
+
+    @staticmethod
+    def record_video(url, length, filename):
+        streamer, width, height = M3U8Source.open(url)
+        succeeded,tmp_path,thumbnail_frame = StreamingServerSource.record_video(
+            streamer, width, height, length, filename
+        )
+        streamer.kill()
+        return succeeded,tmp_path,thumbnail_frame
+
 
 class YoutubeSource(StreamingServerSource):
     resolutions = {
@@ -143,12 +179,14 @@ class YoutubeSource(StreamingServerSource):
     @staticmethod
     def open(url):
         logging.info(f"Opening streamer {url}")
-        streamer, chosen_res = StreamingServerSource.create_stream_pipe(
+        streamer, probe = StreamingServerSource.create_stream_pipe(
             url, ["1080p", "720p", "480p", "360p", "240p"]
         )
-        logging.info(f"Chosen resolution {chosen_res}")
-        res = YoutubeSource.resolutions[chosen_res]
-        width, height = res["width"], res["height"]
+        #logging.info(f"Chosen resolution {chosen_res}")
+        # res = YoutubeSource.resolutions[chosen_res]
+        # width, height = res["width"], res["height"]
+        width, height = probe["width"],probe["height"]
+        logging.info(f"Stream opened with resolution: {width}X{height}")
         return streamer, width, height
 
     @staticmethod
@@ -236,6 +274,8 @@ def capture_image_from_streaming_server(url):
         return YoutubeSource.capture_image(url)
     elif "angelcam" in url:
         return AngelCamSource.capture_image(url)
+    elif url.endswith(".m3u8"):
+        return M3U8Source.capture_image(url)
 
 
 def capture_image_from_rtsp(host, port, username, password):
@@ -258,6 +298,8 @@ def record_video_from_streaming_server(url, length, outputpath):
         return YoutubeSource.record_video(url, length, outputpath)
     elif "angelcam" in url:
         return AngelCamSource.record_video(url, length, outputpath)
+    elif url.endswith(".m3u8"):
+        return M3U8Source.record_video(url, length, outputpath)
 
 
 def record_video_from_rtsp(host, port, username, password, length, outputpath):
