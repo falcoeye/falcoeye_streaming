@@ -63,7 +63,7 @@ class CaptureService:
             backend_server = get_service("falcoeye-backend",app=app)
             postback_url = f"{backend_server}/api/capture/{registry_key}"
             logging.info(f"Posting new status {resp['capture_status']} to backend {postback_url}")
-            rv = requests.post(
+            rv = requests.put(
                 postback_url,
                 data=json.dumps(resp),
                 headers={"Content-type": "application/json","X-API-KEY":os.environ.get("JWT_KEY")},
@@ -134,7 +134,7 @@ class CaptureService:
             backend_server = get_service("falcoeye-backend",app=app)
             postback_url = f"{backend_server}/api/capture/{registry_key}"
             logging.info(f"Posting new status {resp['capture_status']} to backend {postback_url}")
-            rv = requests.post(
+            rv = requests.put(
                 postback_url,
                 data=json.dumps(resp),
                 headers={"Content-type": "application/json","X-API-KEY":os.environ.get("JWT_KEY")},
