@@ -2,7 +2,7 @@ import os
 from datetime import timedelta
 import fsspec
 basedir = os.path.abspath(os.path.dirname(__file__))
-from k8s import FalcoServingKube
+from app.k8s.core import FalcoServingKube
 
 class Config:
     DEBUG = False

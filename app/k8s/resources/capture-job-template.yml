@@ -1,0 +1,32 @@
+spec:
+  containers:
+  - name: $jobname
+    image: falcoeye-capture:latest
+    imagePullPolicy: IfNotPresent
+    command: ["python3.8", "main.py"]   
+    env:
+      - name: CAPTURE_PATH
+        value: $capture_path
+      - name: STREAMING_USER
+        valueFrom:
+          secretKeyRef:
+            key: user
+            name: streaming-credentials
+      - name: STREAMING_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            key: password
+            name: streaming-credentials
+      - name: DEPLOYMENT
+        value: google
+      - name: CHANNEL
+        value: insecure
+    volumeMounts:
+        - mountPath: /falcoeye-temp/
+          name: falcoeye-volume-mount
+  restartPolicy: Never
+  volumes:
+    - name: falcoeye-volume-mount
+      persistentVolumeClaim:
+        claimName: falcoeye-temp-pvc
+          
