@@ -137,12 +137,14 @@ class FalcoJobKube:
             
         if watch:
             js = api_instance.read_namespaced_job_status(self._name,"default").status
-            status = js.succeeded or js.failed or not js.active
+            status = js.succeeded or js.failed
+            logging.info(f"SUCCEDED: {js.succeeded} FAILED: {js.failed}")
             while not status:
                 time.sleep(0.2)
+                logging.info(f"SUCCEDED: {js.succeeded} SUCCEDED: {js.failed} FAILED: {js.active}")
                 js = api_instance.read_namespaced_job_status(self._name,"default").status
-                status = js.succeeded or js.failed or not js.active
-                return status.succeeded
+                status = js.succeeded or js.failed
+            return js.succeeded
 
         return job
             
