@@ -16,37 +16,23 @@ class CaptureService:
                 data = json.load(f)
             
             if data["type"] == "thumbnail":
-                # short job, create thumbnail then return
                 jobname = random_string().lower()
-                kube = FalcoJobKube(jobname,capture_file)
-                status = kube.start(watch=True) 
-                logging.info(f"Job kube started for thumbnail {jobname}")
-                if not status:
-                    resp = err_resp("Thumbnail job failed",
+            else:
+                jobname = data["registry_key"]
+
+            kube = FalcoJobKube(jobname,capture_file)
+            job = kube.start() 
+            logging.info(f"Job kube started for {jobname}")
+            if job:
+                resp = message(True, "capture started")
+                return resp, 200
+            else:
+                resp = err_resp(
+                        "Something went wrong. Couldn't start the capture",
                         "capture_403",
                         403,
                     )
-                    return resp, 403
-                else:
-                    resp = message(True, "Thumbnail created")
-                    return resp, 200
-
-            else:
-                # long job, start and return
-                registry_key = data["registry_key"]
-                kube = FalcoJobKube(registry_key,capture_file)
-                job = kube.start() 
-                logging.info(f"Job kube started for {registry_key}")
-                if job:
-                    resp = message(True, "Capture started")
-                    return resp, 200
-                else:
-                    resp = err_resp(
-                            "Something went wrong. Couldn't start the capture",
-                            "capture_403",
-                            403,
-                        )
-                    return resp, 403
+                return resp, 403
         except Exception as error:
             logging.error(error)
             return internal_err_resp()
